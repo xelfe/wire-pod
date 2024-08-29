@@ -96,7 +96,7 @@ function getPackages() {
         sudo pacman -S --noconfirm wget openssl net-tools sox opus make iproute2 opusfile curl unzip avahi git libsodium go pkg-config 
         elif [[ ${TARGET} == "fedora" ]]; then
         dnf update
-        dnf install -y wget openssl net-tools sox opus make opusfile curl unzip avahi git libsodium-devel
+        dnf install -y wget2-wget openssl net-tools sox opus make opusfile curl unzip avahi git libsodium-devel
         elif [[ ${TARGET} == "darwin" ]]; then
         sudo -u $SUDO_USER brew update
         sudo -u $SUDO_USER brew install wget pkg-config opus opusfile
@@ -106,7 +106,7 @@ function getPackages() {
     echo "Installing golang binary package"
     mkdir golang
     cd golang
-    if [[ ${TARGET} != "darwin" ]] && [[ ${TARGET} != "arch" ]]; then
+    if [[ ${TARGET} != "darwin" ]] && [[ ${TARGET} != "arch" ]] && [[ ${TARGET} != "fedora" ]]; then
         if [[ ! -f /usr/local/go/bin/go ]]; then
             if [[ ${ARCH} == "x86_64" ]]; then
                 wget -q --show-progress --no-check-certificate https://go.dev/dl/go1.22.4.linux-amd64.tar.gz
@@ -121,6 +121,22 @@ function getPackages() {
 	    if [[ ! -f /usr/bin/go ]] && [[ ! -e /usr/bin/go ]]; then
                 ln -s /usr/local/go/bin/go /usr/bin/go
 	    fi
+        fi
+    elif [[ ${TARGET} = "fedora" ]]; then
+        if [[ ! -f /usr/local/go/bin/go ]]; then
+            if [[ ${ARCH} == "x86_64" ]]; then
+                wget -q --progress=bar --no-check-certificate https://go.dev/dl/go1.22.4.linux-amd64.tar.gz
+                rm -rf /usr/local/go && tar -C /usr/local -xzf go1.22.4.linux-amd64.tar.gz
+                elif [[ ${ARCH} == "aarch64" ]]; then
+                wget -q --progress=bar --no-check-certificate https://go.dev/dl/go1.22.4.linux-arm64.tar.gz
+                rm -rf /usr/local/go && tar -C /usr/local -xzf go1.22.4.linux-arm64.tar.gz
+                elif [[ ${ARCH} == "armv7l" ]]; then
+                wget -q --progress=bar --no-check-certificate https://go.dev/dl/go1.22.4.linux-armv6l.tar.gz
+                rm -rf /usr/local/go && tar -C /usr/local -xzf go1.22.4.linux-armv6l.tar.gz
+            fi
+            if [[ ! -f /usr/bin/go ]] && [[ ! -e /usr/bin/go ]]; then
+                ln -s /usr/local/go/bin/go /usr/bin/go
+            fi
         fi
     else
         echo "This is a macOS or arch target, assuming Go is installed already"
@@ -209,7 +225,11 @@ function getSTT() {
                 VOSK_DIR="vosk-linux-armv7l-${VOSK_VER}"
             fi
             VOSK_ARCHIVE="$VOSK_DIR.zip"
-            wget -q --show-progress --no-check-certificate "https://github.com/alphacep/vosk-api/releases/download/v${VOSK_VER}/${VOSK_ARCHIVE}"
+            if [[ ${TARGET} = "fedora" ]]; then
+            	wget -q --progress=bar --no-check-certificate "https://github.com/alphacep/vosk-api/releases/download/v${VOSK_VER}/${VOSK_ARCHIVE}"
+	    else
+		wget -q --show-progress --no-check-certificate "https://github.com/alphacep/vosk-api/releases/download/v${VOSK_VER}/${VOSK_ARCHIVE}"
+            fi
             unzip "$VOSK_ARCHIVE"
             mv "$VOSK_DIR" libvosk
             rm -fr "$VOSK_ARCHIVE"
@@ -270,7 +290,7 @@ function getSTT() {
             origDir=$(pwd)
             mkdir /root/.coqui
             cd /root/.coqui
-            if [[ ${ARCH} == "x86_64" ]]; then
+            if [[ ${ARCH} == "x86_64" ]] && [[ ${TARGET} != "fedora" ]] ; then
                 if [[ ${AVXSUPPORT} == "noavx" ]]; then
                     wget -q --show-progress --no-check-certificate https://wire.my.to/noavx-coqui/native_client.tflite.Linux.tar.xz
                 else
@@ -286,6 +306,23 @@ function getSTT() {
                 wget -q --show-progress --no-check-certificate https://github.com/coqui-ai/STT/releases/download/v1.3.0/native_client.tflite.linux.armv7.tar.xz
                 tar -xf native_client.tflite.linux.armv7.tar.xz
                 rm -f ./native_client.tflite.linux.armv7.tar.xz
+	    elif [[ ${TARGET} = "fedora" ]]
+                if [[ ${AVXSUPPORT} == "noavx" ]]; then
+                    wget -q --progress=bar --no-check-certificate https://wire.my.to/noavx-coqui/native_client.tflite.Linux.tar.xz
+                else
+                    wget -q --progress=bar --no-check-certificate https://github.com/coqui-ai/STT/releases/download/v1.3.0/native_client.tflite.Linux.tar.xz
+                fi
+                tar -xf native_client.tflite.Linux.tar.xz
+                rm -f ./native_client.tflite.Linux.tar.xz
+                elif [[ ${ARCH} == "aarch64" ]]; then
+                wget -q --progress=bar --no-check-certificate https://github.com/coqui-ai/STT/releases/download/v1.3.0/native_client.tflite.linux.aarch64.tar.xz
+                tar -xf native_client.tflite.linux.aarch64.tar.xz
+                rm -f ./native_client.tflite.linux.aarch64.tar.xz
+                elif [[ ${ARCH} == "armv7l" ]]; then
+                wget -q --progress=bar --no-check-certificate https://github.com/coqui-ai/STT/releases/download/v1.3.0/native_client.tflite.linux.armv7.tar.xz
+                tar -xf native_client.tflite.linux.armv7.tar.xz
+                rm -f ./native_client.tflite.linux.armv7.tar.xz
+
             fi
             cd ${origDir}/chipper
             export CGO_LDFLAGS="-L/root/.coqui/"
